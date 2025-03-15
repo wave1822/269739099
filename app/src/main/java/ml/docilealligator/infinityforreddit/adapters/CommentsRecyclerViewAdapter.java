@@ -12,6 +12,7 @@ import android.text.Spanned;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.webkit.WebView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -32,6 +33,8 @@ import com.google.android.material.button.MaterialButton;
 import java.util.ArrayList;
 import java.util.Locale;
 import java.util.concurrent.Executor;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import io.noties.markwon.AbstractMarkwonPlugin;
 import io.noties.markwon.Markwon;
@@ -177,7 +180,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
         mActivity = activity;
         mFragment = fragment;
         mExecutor = executor;
-        mRetrofit =
+        mRetrofit = retrofit;
         mOauthRetrofit = oauthRetrofit;
         mAccessToken = accessToken;
         mAccountName = accountName;
@@ -584,6 +587,16 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                         params.setMargins(0, (int) Utils.convertDpToPixel(16, mActivity), 0, 0);
                     }
                 }
+
+                // Check for YouTube link
+                String commentText = comment.getCommentMarkdown();
+                String youtubeLink = extractYouTubeLink(commentText);
+                if (youtubeLink != null) {
+                    WebView youtubeWebView = ((CommentBaseViewHolder) holder).itemView.findViewById(R.id.youtube_webview);
+                    youtubeWebView.setVisibility(View.VISIBLE);
+                    youtubeWebView.getSettings().setJavaScriptEnabled(true);
+                    youtubeWebView.loadData("<iframe width=\"100%\" height=\"100%\" src=\"https://www.youtube.com/embed/" + youtubeLink + "\" frameborder=\"0\" allowfullscreen></iframe>", "text/html", "utf-8");
+                }
             }
         } else if (holder instanceof CommentFullyCollapsedViewHolder) {
             Comment comment = getCurrentComment(position);
@@ -821,6 +834,17 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
                 });
             }
         }
+    }
+
+    // Method to extract YouTube link from comment text
+    private String extractYouTubeLink(String text) {
+        String pattern = "https?://(?:www\\.)?youtube\\.com/watch\\?v=([\\w-]+)|https?://(?:www\\.)?youtu\\.be/([\\w-]+)";
+        Pattern compiledPattern = Pattern.compile(pattern);
+        Matcher matcher = compiledPattern.matcher(text);
+        if (matcher.find()) {
+            return matcher.group(1) != null ? matcher.group(1) : matcher.group(2);
+        }
+        return null;
     }
 
     public void setCanStartActivity(boolean canStartActivity) {
@@ -1243,6 +1267,7 @@ public class CommentsRecyclerViewAdapter extends RecyclerView.Adapter<RecyclerVi
 
         SortType.Type getSortType();
     }
+
 
     public class CommentBaseViewHolder extends RecyclerView.ViewHolder {
         LinearLayout linearLayout;
